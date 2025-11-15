@@ -1,30 +1,12 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { validateUser, validateUserUpdate } = require('../middleware/validation');
+const bcrypt = require('bcryptjs');
+
+// Impor data user dari file terpusat
+let users = require('../data/users');
 
 const router = express.Router();
-
-// In-memory database (replace with real database in production)
-let users = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    age: 30,
-    role: 'admin',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    age: 25,
-    role: 'user',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
 
 // GET /api/users - Get all users
 router.get('/', (req, res) => {
@@ -64,7 +46,12 @@ router.get('/', (req, res) => {
   }
   
   // Otherwise return all users as simple array
-  res.json(filteredUsers);
+  // Kita hapus password sebelum mengirim
+  const usersWithoutPassword = filteredUsers.map(u => {
+    const { password, ...user } = u;
+    return user;
+  });
+  res.json(usersWithoutPassword);
 });
 
 // GET /api/users/:id - Get user by ID
@@ -78,14 +65,18 @@ router.get('/:id', (req, res) => {
     });
   }
   
-  res.json(user);
+  const { password, ...userWithoutPassword } = user;
+  res.json(userWithoutPassword);
 });
 
-// POST /api/users - Create new user
-router.post('/', validateUser, (req, res) => {
-  const { name, email, age, role = 'user' } = req.body;
+// --- PERUBAHAN DI SINI ---
+// POST /api/users - Create new user (dari form utama)
+// Diaktifkan kembali dan disesuaikan dengan struktur data baru
+router.post('/', validateUser, async (req, res) => {
+  // Ambil password dari body
+  const { name, email, age, password, role = 'user' } = req.body;
   
-  // Check if email already exists
+  // 1. Cek apakah email sudah ada
   const existingUser = users.find(u => u.email === email);
   if (existingUser) {
     return res.status(409).json({
@@ -93,11 +84,31 @@ router.post('/', validateUser, (req, res) => {
       message: 'A user with this email already exists'
     });
   }
-  
+
+  // 2. Buat username default (dari nama)
+  // Ganti spasi dengan _ dan buat jadi lowercase
+  const defaultUsername = name.replace(/\s+/g, '_').toLowerCase();
+
+  // 3. Cek jika username sudah ada
+  const usernameExists = users.find(u => u.username === defaultUsername);
+  if (usernameExists) {
+     return res.status(409).json({
+      error: 'Username already exists',
+      message: 'A user with this name (or similar) already exists, please try another name.'
+    });
+  }
+
+  // 4. Hash password yang dikirim dari form
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // 5. Buat user baru
   const newUser = {
     id: uuidv4(),
     name,
+    username: defaultUsername, // Gunakan username default
     email,
+    password: hashedPassword, // Simpan password yang sudah di-hash
     age,
     role,
     createdAt: new Date().toISOString(),
@@ -106,11 +117,16 @@ router.post('/', validateUser, (req, res) => {
   
   users.push(newUser);
   
+  // 6. Kirim kembali user baru tanpa password
+  const { password: pw, ...userWithoutPassword } = newUser;
+
   res.status(201).json({
     message: 'User created successfully',
-    user: newUser
+    user: userWithoutPassword 
   });
 });
+// --- AKHIR PERUBAHAN ---
+
 
 // PUT /api/users/:id - Update user
 router.put('/:id', validateUserUpdate, (req, res) => {
@@ -147,9 +163,10 @@ router.put('/:id', validateUserUpdate, (req, res) => {
   
   users[userIndex] = updatedUser;
   
+  const { password, ...userWithoutPassword } = updatedUser;
   res.json({
     message: 'User updated successfully',
-    user: updatedUser
+    user: userWithoutPassword
   });
 });
 
@@ -165,10 +182,11 @@ router.delete('/:id', (req, res) => {
   }
   
   const deletedUser = users.splice(userIndex, 1)[0];
-  
+  const { password, ...userWithoutPassword } = deletedUser;
+
   res.json({
     message: 'User deleted successfully',
-    user: deletedUser
+    user: userWithoutPassword
   });
 });
 

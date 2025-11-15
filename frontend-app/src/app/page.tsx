@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
 import { userApi } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext'; // <-- Impor useAuth
+import { useRouter } from 'next/navigation'; // <-- Impor useRouter
 
 // GraphQL queries and mutations
 const GET_POSTS = gql`
@@ -32,8 +34,23 @@ const CREATE_POST = gql`
 export default function Home() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newUser, setNewUser] = useState({ name: '', email: '', age: '' });
+  
+  // State untuk form Add User
+  const [newUser, setNewUser] = useState({ name: '', email: '', age: '', password: '' });
+  
   const [newPost, setNewPost] = useState({ title: '', content: '', author: '' });
+
+  // --- Blok Auth ---
+  const { user, token, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !token) {
+      router.push('/login'); // Arahkan ke login jika tidak ada token
+    }
+  }, [isLoading, token, router]);
+  // --- Akhir Blok Auth ---
+
 
   // GraphQL queries
   const { data: postsData, loading: postsLoading, refetch: refetchPosts } = useQuery(GET_POSTS);
@@ -41,8 +58,11 @@ export default function Home() {
 
   // Fetch users from REST API
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    // Hanya fetch jika sudah login
+    if (token) {
+      fetchUsers();
+    }
+  }, [token]); // Tambahkan token sebagai dependensi
 
   const fetchUsers = async () => {
     try {
@@ -50,20 +70,25 @@ export default function Home() {
       setUsers(response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
+      if ((error as any).response?.status === 401) {
+        logout(); // Logout jika token tidak valid
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Handler untuk form Add User
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await userApi.createUser({
         name: newUser.name,
         email: newUser.email,
-        age: parseInt(newUser.age)
+        age: parseInt(newUser.age),
+        password: newUser.password // Kirim password
       });
-      setNewUser({ name: '', email: '', age: '' });
+      setNewUser({ name: '', email: '', age: '', password: '' }); // Reset semua field
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -74,7 +99,7 @@ export default function Home() {
     e.preventDefault();
     try {
       await createPost({
-        variables: newPost,
+        variables: { ...newPost, author: user?.username || 'Anonymous' }, // Gunakan username dari auth
       });
       setNewPost({ title: '', content: '', author: '' });
       refetchPosts();
@@ -91,13 +116,37 @@ export default function Home() {
       console.error('Error deleting user:', error);
     }
   };
-
+  
+  // Tampilan Loading atau Jika Belum Login
+  if (isLoading || !token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-900">Loading...</p>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-gray-900 mb-12">
-          Microservices Demo App
-        </h1>
+        
+        {/* --- Header dengan Info User & Logout --- */}
+        <div className="flex justify-between items-center mb-12">
+           <h1 className="text-4xl font-bold text-center text-gray-900">
+            Microservices Demo App
+          </h1>
+          <div className="text-right text-gray-900">
+            <p>Welcome, <span className="font-bold">{user?.username}</span> ({user?.role})</p>
+            <button
+              onClick={logout}
+              className="text-sm text-red-500 hover:underline"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+        {/* --- Akhir Header --- */}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Users Section (REST API) */}
@@ -112,7 +161,7 @@ export default function Home() {
                   placeholder="Name"
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="border rounded-md px-3 py-2"
+                  className="border rounded-md px-3 py-2 text-gray-900"
                   required
                 />
                 <input
@@ -120,7 +169,7 @@ export default function Home() {
                   placeholder="Email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="border rounded-md px-3 py-2"
+                  className="border rounded-md px-3 py-2 text-gray-900"
                   required
                 />
                 <input
@@ -128,11 +177,23 @@ export default function Home() {
                   placeholder="Age"
                   value={newUser.age}
                   onChange={(e) => setNewUser({ ...newUser, age: e.target.value })}
-                  className="border rounded-md px-3 py-2"
+                  className="border rounded-md px-3 py-2 text-gray-900"
                   min="1"
                   max="150"
                   required
                 />
+
+                {/* Input password baru */}
+                <input
+                  type="password"
+                  placeholder="Password (min. 6 characters)"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="border rounded-md px-3 py-2 text-gray-900"
+                  required
+                  minLength={6}
+                />
+
                 <button
                   type="submit"
                   className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
@@ -141,16 +202,18 @@ export default function Home() {
                 </button>
               </div>
             </form>
+            {/* Akhir Form */}
+
 
             {/* Users List */}
             {loading ? (
-              <p>Loading users...</p>
+              <p className="text-gray-900">Loading users...</p>
             ) : (
               <div className="space-y-4">
                 {users.map((user: any) => (
                   <div key={user.id} className="flex justify-between items-center p-3 border rounded">
                     <div>
-                      <p className="font-semibold">{user.name}</p>
+                      <p className="font-semibold text-gray-900">{user.name} ({user.username})</p>
                       <p className="text-gray-600 text-sm">{user.email}</p>
                       <p className="text-gray-500 text-xs">Age: {user.age} • {user.role}</p>
                     </div>
@@ -178,23 +241,21 @@ export default function Home() {
                   placeholder="Title"
                   value={newPost.title}
                   onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                  className="border rounded-md px-3 py-2"
+                  className="border rounded-md px-3 py-2 text-gray-900"
                   required
                 />
                 <textarea
                   placeholder="Content"
                   value={newPost.content}
                   onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                  className="border rounded-md px-3 py-2 h-24"
+                  className="border rounded-md px-3 py-2 h-24 text-gray-900"
                   required
                 />
+                {/* Input author kita sembunyikan karena sudah otomatis */}
                 <input
-                  type="text"
-                  placeholder="Author"
+                  type="hidden"
                   value={newPost.author}
                   onChange={(e) => setNewPost({ ...newPost, author: e.target.value })}
-                  className="border rounded-md px-3 py-2"
-                  required
                 />
                 <button
                   type="submit"
@@ -207,12 +268,12 @@ export default function Home() {
 
             {/* Posts List */}
             {postsLoading ? (
-              <p>Loading posts...</p>
+              <p className="text-gray-900">Loading posts...</p>
             ) : (
               <div className="space-y-4">
                 {postsData?.posts.map((post: any) => (
                   <div key={post.id} className="p-4 border rounded">
-                    <h3 className="font-semibold text-lg">{post.title}</h3>
+                    <h3 className="font-semibold text-lg text-gray-900">{post.title}</h3>
                     <p className="text-gray-600 mt-2">{post.content}</p>
                     <div className="flex justify-between items-center mt-3 text-sm text-gray-500">
                       <span>By: {post.author}</span>

@@ -5,6 +5,7 @@ const userSchema = Joi.object({
   name: Joi.string().min(2).max(50).required(),
   email: Joi.string().email().required(),
   age: Joi.number().integer().min(1).max(150).required(),
+  password: Joi.string().min(6).required(),
   role: Joi.string().valid('admin', 'user', 'moderator').optional()
 });
 
