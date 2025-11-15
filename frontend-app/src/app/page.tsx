@@ -133,7 +133,7 @@ export default function Home() {
         {/* --- Header dengan Info User & Logout --- */}
         <div className="flex justify-between items-center mb-12">
            <h1 className="text-4xl font-bold text-center text-gray-900">
-            Microservices Demo App
+            Task Management
           </h1>
           <div className="text-right text-gray-900">
             <p>Welcome, <span className="font-bold">{user?.username}</span> ({user?.role})</p>
@@ -151,7 +151,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Users Section (REST API) */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Users (REST API)</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">user service</h2>
             
             {/* Create User Form */}
             <form onSubmit={handleCreateUser} className="mb-6">
@@ -231,7 +231,7 @@ export default function Home() {
 
           {/* Posts Section (GraphQL) */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Posts (GraphQL)</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">task service</h2>
             
             {/* Create Post Form */}
             <form onSubmit={handleCreatePost} className="mb-6">
@@ -261,14 +261,14 @@ export default function Home() {
                   type="submit"
                   className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
                 >
-                  Add Post
+                  Add Task
                 </button>
               </div>
             </form>
 
             {/* Posts List */}
             {postsLoading ? (
-              <p className="text-gray-900">Loading posts...</p>
+              <p className="text-gray-900">Loading tasks...</p>
             ) : (
               <div className="space-y-4">
                 {postsData?.posts.map((post: any) => (
