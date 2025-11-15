@@ -46,10 +46,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading && !token) {
-      router.push('/login'); // Arahkan ke login jika tidak ada token
+      router.push('/login'); // n
     }
   }, [isLoading, token, router]);
-  // --- Akhir Blok Auth ---
+  
 
 
   // GraphQL queries
@@ -251,7 +251,7 @@ export default function Home() {
                   className="border rounded-md px-3 py-2 h-24 text-gray-900"
                   required
                 />
-                {/* Input author kita sembunyikan karena sudah otomatis */}
+                {}
                 <input
                   type="hidden"
                   value={newPost.author}

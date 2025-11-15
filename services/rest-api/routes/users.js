@@ -69,11 +69,9 @@ router.get('/:id', (req, res) => {
   res.json(userWithoutPassword);
 });
 
-// --- PERUBAHAN DI SINI ---
-// POST /api/users - Create new user (dari form utama)
-// Diaktifkan kembali dan disesuaikan dengan struktur data baru
+
 router.post('/', validateUser, async (req, res) => {
-  // Ambil password dari body
+  
   const { name, email, age, password, role = 'user' } = req.body;
   
   // 1. Cek apakah email sudah ada
@@ -125,7 +123,7 @@ router.post('/', validateUser, async (req, res) => {
     user: userWithoutPassword 
   });
 });
-// --- AKHIR PERUBAHAN ---
+
 
 
 // PUT /api/users/:id - Update user

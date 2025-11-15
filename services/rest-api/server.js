@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const userRoutes = require('./routes/users');
-const authRoutes = require('./routes/auth'); // <-- TAMBAHKAN INI
+const authRoutes = require('./routes/auth'); // 
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -35,7 +35,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes); // <-- TAMBAHKAN INI
+app.use('/api/auth', authRoutes); // 
 
 // Error handling middleware
 app.use(errorHandler);

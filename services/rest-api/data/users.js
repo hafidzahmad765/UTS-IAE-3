@@ -1,7 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 
-// In-memory database
-// Password untuk john dan jane sekarang adalah hash dari "password123"
+
 let users = [
   {
     id: '1',
